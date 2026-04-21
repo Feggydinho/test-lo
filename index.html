@@ -34,11 +34,14 @@
 
   <main class="main-container">
     <section class="input-container">
-      <label for="scriptSrc">Script Source (src):1</label>
+      <label for="scriptSrc">Script Source (src):2</label>
       <input type="text" id="scriptSrc" placeholder="e.g. https://your-org.lightning.force.com/lightning.out.js" />
 
-      <label for="lightningEndpoint">Lightning Endpoint:</label>
+      <label for="lightningEndpoint">Lightning Endpoint (for Lightning Out):</label>
       <input type="text" id="lightningEndpoint" placeholder="e.g. https://your-org.lightning.force.com" />
+
+      <label for="instanceUrl">Instance URL (for CometD/Streaming API):</label>
+      <input type="text" id="instanceUrl" placeholder="e.g. https://your-org.my.salesforce.com" />
 
       <label for="tokenUrl">Token URL:</label>
       <input type="text" id="tokenUrl" placeholder="e.g. https://your-org.lightning.force.com/services/oauth2/token" />
@@ -86,6 +89,7 @@
 
   <script>
     let lightningEndpoint = '';
+    let instanceUrl = '';
     let tokenUrl = '';
     let jwtToken = '';
     let appName = '';
@@ -111,7 +115,7 @@
      *
      * Prerequisite: the Salesforce org must have this page's origin in Setup → CORS.
      */
-    function setupCometDStreaming(cmp, endpoint, token) {
+    function setupCometDStreaming(cmp, endpoint, token, sfInstanceUrl) {
       if (typeof Faye === 'undefined') {
         console.error('[CometD] ❌ window.Faye is undefined. Possible causes:\n' +
           '  1. The faye-browser CDN script failed to load (check Network tab for faye-browser.min.js).\n' +
@@ -128,15 +132,35 @@
       // Browsers cannot send Authorization headers in a WebSocket upgrade handshake,
       // so wss:// to Salesforce always fails cross-origin.
       // HTTP long-polling carries the Authorization: OAuth header without restriction.
-      const cometdUrl = endpoint + '/cometd/55.0';
-      console.log('[CometD] Connecting →', cometdUrl);
+      // CometD must use the my.salesforce.com instance URL, NOT the lightning.force.com host.
+      // The lightning.force.com host serves Lightning Out JS assets; it does not expose /cometd/.
+      const cometdBase = sfInstanceUrl || endpoint;
+      const cometdUrl = cometdBase + '/cometd/55.0';
+      console.log('[CometD] Connecting →', cometdUrl, '(instanceUrl =', cometdBase, ')');
       const client = new Faye.Client(cometdUrl);
       client.disable('websocket');
       client.setHeader('Authorization', 'OAuth ' + token);
 
+      // Intercept every CometD message to log server-side rejections (handshake errors, auth failures, etc.)
+      client.addExtension({
+        incoming: function(message, callback) {
+          if (message.successful === false || message.error) {
+            console.error('[CometD] Server rejected message on channel ' + message.channel, {
+              error: message.error,
+              advice: message.advice,
+              ext: message.ext,
+              fullMessage: message
+            });
+          }
+          callback(message);
+        }
+      });
+
       // Surface Faye transport-level errors (handshake failures, auth rejections, etc.)
       client.on('transport:down', function() {
-        console.error('[CometD] ❌ transport:down — long-poll connection dropped (auth/CORS/network).');
+        console.error('[CometD] ❌ transport:down — handshake rejected. Check Network tab for the\n' +
+          '  POST to /cometd/55.0 — if you see 401 the token lacks "api" scope;\n' +
+          '  if you see a CORS error the org CORS list is missing this origin for CometD.');
       });
       client.on('transport:up', function() {
         console.log('[CometD] ✅ transport:up — handshake succeeded, long-poll active.');
@@ -181,6 +205,7 @@
     document.getElementById('loadScriptButton').addEventListener('click', function() {
       const scriptSrc = document.getElementById('scriptSrc').value;
       lightningEndpoint = document.getElementById('lightningEndpoint').value;
+      instanceUrl = document.getElementById('instanceUrl').value || lightningEndpoint.replace('lightning.force.com', 'my.salesforce.com');
       tokenUrl = document.getElementById('tokenUrl').value;
       jwtToken = document.getElementById('jwtToken').value;
       appName = document.getElementById('appName').value;
@@ -260,7 +285,7 @@
                 // Wire up real-time streaming for ChatDrawer via CometD + Bearer token.
                 // This is the cross-origin alternative to lightning/empApi (which requires cookies).
                 if (redirectType === 'ChatDrawer') {
-                  setupCometDStreaming(cmp, lightningEndpoint, token);
+                  setupCometDStreaming(cmp, lightningEndpoint, token, instanceUrl);
                 }
               }
             );
