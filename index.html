@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LightningOut Standalone</title>
+  <link rel="stylesheet" href="https://jaden2245.github.io/lightningOut/mystyles.css" />
+  <!-- faye-browser: CometD client for cross-origin Salesforce Streaming API.
+       No AMD workaround needed here — unlike the VF page, there is no Salesforce
+       framework setting up window.define, so faye sets window.Faye as a global directly. -->
+  <script src="https://cdn.jsdelivr.net/npm/faye@1.4.0/browser/faye-browser.min.js"></script>
+</head>
+<body>
+  <header class="header">
+    <h1>LightningOut Standalone</h1>
+    <p>GitHub Pages test harness — whitelist this page's origin in Salesforce Setup → CORS</p>
+  </header>
+
+  <main class="main-container">
+    <section class="input-container">
+      <label for="scriptSrc">Script Source (src):</label>
+      <input type="text" id="scriptSrc" placeholder="e.g. https://your-org.lightning.force.com/lightning.out.js" />
+
+      <label for="lightningEndpoint">Lightning Endpoint:</label>
+      <input type="text" id="lightningEndpoint" placeholder="e.g. https://your-org.lightning.force.com" />
+
+      <label for="tokenUrl">Token URL:</label>
+      <input type="text" id="tokenUrl" placeholder="e.g. https://your-org.lightning.force.com/services/oauth2/token" />
+
+      <label for="jwtToken">JWT / Access Token:</label>
+      <input type="text" id="jwtToken" placeholder="Paste OAuth Bearer token" />
+
+      <label for="appName">App Name:</label>
+      <input type="text" id="appName" placeholder="e.g. c:spogLightningOut" />
+
+      <label for="componentName">Component Name:</label>
+      <input type="text" id="componentName" placeholder="e.g. c:spogLightningOutRedirector" />
+
+      <button id="loadScriptButton" class="primary-button">Load Script</button>
+    </section>
+
+    <section class="selection-container">
+      <label for="redirectTypeSelector">Choose a LightningOut View:</label>
+      <select id="redirectTypeSelector" class="dropdown">
+        <option value="Case" selected="selected">Case</option>
+        <option value="LocalPreferences">LocalPreferences</option>
+        <option value="Contact">Contact</option>
+        <option value="ChatDrawer">ChatDrawer</option>
+      </select>
+
+      <label for="idSelector">Choose a Case ID:</label>
+      <select id="idSelector" class="dropdown">
+        <option value="500dn000001nP38AAE">Case ID 1 Property_Guest_Experience_GXP</option>
+        <option value="5008A00000EhmxhQAB">Case ID 2 Ambassador File GXP</option>
+        <option value="500dn00000BSyqxAAD">Case ID 2.1 Ambassador File GXP</option>
+        <option value="500dn000005hFybAAE">Case ID 3 CEC_Loyalty</option>
+        <option value="500dn000006SFlRAAW">Case ID 4 ProeprtyCase</option>
+        <option value="5007x00000KnAn1AAF">AmbassadorFileGxp dttdev valid</option>
+        <option value="5007x00000T40rxAAB">Case ID 6 CEC_Loyalty_DEV former</option>
+        <option value="5007x00000T4L5BAAV">Amb File 7 dttdev former</option>
+        <option value="500dn00000Bb74EAAR">Case ID 8 CEC_Loyalty_Prod</option>
+        <option value="500KS0000010P6vYAE">Case ID 9 Property_Guest_Experience</option>
+        <option value="7A74949E32D8717EA11020E4C95XXX2.U1">Guest 10</option>
+        <option value="41A7834232D20322204EF123046206446.01">Guest 11</option>
+        <option value="B7C1445595C50B2121C50B42094110314.01">Guest 12</option>
+        <option value="45B4095DCAEAB4106B1D428C612F32089.U1">Guest 13</option>
+        <option value="57B6B2AC8835CFFE5787FA57253226E56.U1">Guest 14</option>
+        <option value="6901B6B6C0E1884E802815451B2299513.U1">Guest 15 Amelia Whalen</option>
+        <option value="500dn000009UgB7AAK">16 Property Case Dttqa</option>
+        <option value="B7F20C60C359B0C176030DF18873B9604.U1">Guest 17 Bryan Spencer</option>
+        <option value="8002858CD714D0FD8F8651C2EA30B19A8.U1">Guest 18 Kenneth Wehner</option>
+        <option value="48656AB37B814AE1B06E97DBC6D6D7854.U1">Guest 19 Angela Orr</option>
+        <option value="5007x00000ZWCZlAAP">Amb GXP dev 21</option>
+        <option value="5007x00000ZWCY9AAP">Amb GXP dev 22</option>
+        <option value="5007x00000ZWCQ5AAP">Amb GXP dev 23</option>
+        <option value="5007x00000ZWCLFAA5">Amb GXP dev 24</option>
+        <option value="5007x00000ZWCGPAA5">Amb GXP dev 25</option>
+        <option value="5007x00000ZWC9xAAH">Amb GXP dev 26</option>
+        <option value="5007x00000ZWC8LAAX">Amb GXP dev 27</option>
+        <option value="5007x00000ZWC57AAH">Amb GXP dev 28</option>
+        <option value="5007x00000ZWC0HAAX">Amb GXP dev 29</option>
+        <option value="5007x00000ZWBx3AAH">Amb GXP dev 30</option>
+        <option value="5007x00000ZWBozAAH">Amb GXP dev 31</option>
+        <option value="5007x00000U8CsLAAV">PGE GXP dev 32</option>
+        <option value="500dn00000C3Ro0AAF">PGE GXP qa 34</option>
+        <option value="5007x00000aGVEPAA4">PGE GXP dev 35</option>
+        <option value="5007x00000aGVBBAA4">PGE GXP dev 36</option>
+        <option value="5007x00000dBqZWAA0">PGE GXP dev 37</option>
+        <option value="5007x00000dByqPAAS">PGE GXP dev 38</option>
+        <option value="5007x00000dByiLAAS">PGE GXP dev 39</option>
+        <option value="5007x00000dBzrJAAS">Amb GXP dev 40</option>
+        <option value="5007x00000dBZFMAA4">Amb GXP dev 41</option>
+        <option value="5007x00000dBdpLAAS">Amb GXP dev 42</option>
+        <option value="5007x00000dBvnjAAC">CLE GXP dev 43</option>
+        <option value="5007x00000dDPv1AAG">AMB GXP dev 44</option>
+        <option value="5007x00000dDWBiAAO">AMB GXP dev 45</option>
+        <option value="5007x00000dDYQPAA4">AMB GXP dev 46</option>
+        <option value="5007x00000dDQIOAA4">AMB GXP dev 47</option>
+        <option value="5007x00000dyPmfAAE">AMB GXP dev 48</option>
+        <option value="5007x00000dyPptAAE">AMB GXP dev 49</option>
+        <option value="500dn00000DXAfjAAH">PGE GXP qa 50</option>
+        <option value="500dn00000DxxmBAAR">PGE GXP qa 51</option>
+        <option value="500dn00000Dy0qUAAR">PGE GXP qa 52</option>
+        <option value="500dn00000Dy4AvAAJ">CLE GXP qa 53</option>
+        <option value="500dn00000Dxzw3AAB">CLE GXP qa 54</option>
+        <option value="500dn00000Dy3JhAAJ">AMB GXP qa 55</option>
+        <option value="500dn00000Dy35BAAR">AMG GXP qa 56</option>
+        <option value="500ah000008Q6ZqAAK">PGE GXP uat 57</option>
+      </select>
+
+      <button id="renderButton" class="primary-button" disabled="disabled">Render in LightningOut</button>
+    </section>
+
+    <section class="lightning-container">
+      <div data-lightning-out="true"></div>
+    </section>
+
+    <section id="errorContainer" class="error-container"></section>
+  </main>
+
+  <footer class="footer">
+    <p>Rights Reserved.</p>
+  </footer>
+
+  <script>
+    let lightningEndpoint = '';
+    let tokenUrl = '';
+    let jwtToken = '';
+    let appName = '';
+    let componentName = '';
+    const targetElement = document.querySelector('[data-lightning-out]');
+
+    // Holds the active Faye CometD client used for streaming.
+    // Torn down each time initializeLightningOut is called to avoid duplicate subscriptions.
+    let _sfConn = null;
+
+    function teardownCometD() {
+      if (_sfConn) {
+        try { _sfConn.streaming.disconnect(); } catch (e) { /* ignore */ }
+        _sfConn = null;
+      }
+    }
+
+    /**
+     * Establishes a CometD streaming connection to the Salesforce org using an
+     * OAuth Bearer token (no session cookie required, works cross-origin).
+     * Subscribes to ChatMessageEvent__e and ChatTypingEvent__e, then injects each
+     * arriving event into the component via the @api bridge methods.
+     *
+     * Prerequisite: the Salesforce org must have this page's origin in Setup → CORS.
+     */
+    function setupCometDStreaming(cmp, endpoint, token) {
+      if (typeof Faye === 'undefined') {
+        console.warn('[CometD] faye-browser not loaded — streaming unavailable.');
+        return;
+      }
+
+      teardownCometD();
+
+      // disable('websocket') must be called before the first subscribe().
+      // Browsers cannot send Authorization headers in a WebSocket upgrade handshake,
+      // so wss:// to Salesforce always fails cross-origin.
+      // HTTP long-polling carries the Authorization: OAuth header without restriction.
+      const client = new Faye.Client(endpoint + '/cometd/42.0');
+      client.disable('websocket');
+      client.setHeader('Authorization', 'OAuth ' + token);
+
+      client.subscribe('/event/ChatMessageEvent__e', function(message) {
+        try { cmp.injectChatEvent(message); }
+        catch (e) { console.error('[CometD] injectChatEvent failed', e); }
+      });
+
+      client.subscribe('/event/ChatTypingEvent__e', function(message) {
+        try { cmp.injectTypingEvent(message); }
+        catch (e) { console.error('[CometD] injectTypingEvent failed', e); }
+      });
+
+      _sfConn = { streaming: { disconnect: function() { client.disconnect(); } } };
+      console.log('[CometD] Streaming active (long-polling, no WebSocket) →', endpoint);
+    }
+
+    const redirectTypeSelector = document.getElementById('redirectTypeSelector');
+    const idSelector = document.getElementById('idSelector');
+
+    function toggleRecordSelector() {
+      const needsRecordId = redirectTypeSelector.value !== 'ChatDrawer';
+      idSelector.disabled = !needsRecordId;
+      idSelector.style.opacity = needsRecordId ? '1' : '0.5';
+    }
+
+    toggleRecordSelector();
+    redirectTypeSelector.addEventListener('change', toggleRecordSelector);
+
+    document.getElementById('loadScriptButton').addEventListener('click', function() {
+      const scriptSrc = document.getElementById('scriptSrc').value;
+      lightningEndpoint = document.getElementById('lightningEndpoint').value;
+      tokenUrl = document.getElementById('tokenUrl').value;
+      jwtToken = document.getElementById('jwtToken').value;
+      appName = document.getElementById('appName').value;
+      componentName = document.getElementById('componentName').value;
+
+      if (!scriptSrc || !lightningEndpoint || !tokenUrl || !jwtToken || !appName || !componentName) {
+        alert('Please provide all required inputs.');
+        return;
+      }
+
+      const script = document.createElement('script');
+      script.src = scriptSrc;
+      script.onload = function() {
+        console.log('Lightning Out script loaded successfully.');
+        document.getElementById('renderButton').disabled = false;
+      };
+      script.onerror = function() {
+        console.error('Failed to load Lightning Out script. Check the script source URL.');
+        showError('Failed to load Lightning Out script. Check the script source URL and CORS configuration.');
+      };
+      document.head.appendChild(script);
+    });
+
+    function initializeLightningOut(recordId, redirectType) {
+      teardownCometD();
+      targetElement.innerHTML = '';
+      showError('');
+
+      const token = jwtToken;
+      if (!token) {
+        showError('Access token is missing.');
+        return;
+      }
+
+      const start = performance.now();
+      console.log('[LO] init start', { recordId, redirectType, appName, componentName, lightningEndpoint });
+
+      let useCallbackFired = false;
+      const useTimeout = setTimeout(function() {
+        if (!useCallbackFired) {
+          console.error('[LO] $Lightning.use callback did NOT fire yet after 45s.');
+          showError('$Lightning.use did not complete. Check Network for 302/401 and CORS. Likely scope/endpoint mismatch.');
+        }
+      }, 45000);
+
+      try {
+        $Lightning.use(
+          appName,
+          function() {
+            useCallbackFired = true;
+            clearTimeout(useTimeout);
+            showError(''); // clear any false-positive timeout error
+
+            console.log('[LO] $Lightning.use callback fired', { elapsedMs: Math.round(performance.now() - start) });
+
+            const componentAttrs = { redirectType: redirectType };
+            if (recordId) {
+              componentAttrs.recordId = recordId;
+            }
+
+            $Lightning.createComponent(
+              componentName,
+              componentAttrs,
+              targetElement,
+              function(cmp) {
+                console.log('[LO] createComponent callback fired', {
+                  elapsedMs: Math.round(performance.now() - start),
+                  cmpExists: !!cmp,
+                  redirectType: redirectType
+                });
+
+                if (!cmp) {
+                  showError('createComponent returned no component instance. Check console for Aura errors.');
+                  return;
+                }
+
+                // Wire up real-time streaming for ChatDrawer via CometD + Bearer token.
+                // This is the cross-origin alternative to lightning/empApi (which requires cookies).
+                if (redirectType === 'ChatDrawer') {
+                  setupCometDStreaming(cmp, lightningEndpoint, token);
+                }
+              }
+            );
+          },
+          lightningEndpoint,
+          token
+        );
+      } catch (e) {
+        clearTimeout(useTimeout);
+        console.error('[LO] Exception thrown calling $Lightning.use', e);
+        showError('Exception calling $Lightning.use: ' + (e && e.message ? e.message : String(e)));
+      }
+    }
+
+    function showError(msg) {
+      const errorContainer = document.getElementById('errorContainer');
+      if (errorContainer) {
+        errorContainer.innerHTML = msg ? '<p style="color:red;">' + escapeHtml(msg) + '</p>' : '';
+      }
+    }
+
+    function escapeHtml(s) {
+      return String(s).replace(/[&<>"']/g, function(c) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+      });
+    }
+
+    document.getElementById('renderButton').addEventListener('click', function() {
+      const selectedRedirectType = redirectTypeSelector.value;
+      const selectedId = selectedRedirectType === 'ChatDrawer' ? null : idSelector.value;
+      initializeLightningOut(selectedId, selectedRedirectType);
+    });
+
+    window.addEventListener('lightningError', function(e) {
+      const errorDetail = e.detail;
+      console.error('Received lightningError event:', errorDetail);
+      const errorContainer = document.getElementById('errorContainer');
+      if (errorContainer) {
+        errorContainer.innerHTML = '<p style="color:red;">Error: ' + escapeHtml((errorDetail && errorDetail.message) || 'Unknown error') + '</p>';
+      }
+    });
+  </script>
+</body>
+</html>
