@@ -3,11 +3,14 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>LightningOut Standalone</title>
+  <title>LightningOut Standalone 1</title>
   <link rel="stylesheet" href="https://jaden2245.github.io/lightningOut/mystyles.css" />
   <!-- faye-browser: CometD client for cross-origin Salesforce Streaming API.
-       No AMD workaround needed here — unlike the VF page, there is no Salesforce
-       framework setting up window.define, so faye sets window.Faye as a global directly. -->
+       Self-hosted (faye-browser.min.js in same folder) — the jsdelivr/unpkg CDN paths for
+       faye@1.4.x changed; self-hosting eliminates CDN dependency.
+       The AMD workaround (clear window.define) is applied below even here, because the
+       Aura/Lightning Out framework sets window.define and faye's UMD bundle would take the
+       AMD path instead of setting window.Faye. -->
   <script>
     // Faye uses a UMD bundle: if window.define exists (AMD) it registers as a module
     // instead of setting window.Faye.  Clear define before loading so Faye takes the
@@ -15,8 +18,8 @@
     window._savedDefine = window.define;
     window.define = undefined;
   </script>
-  <script src="https://cdn.jsdelivr.net/npm/faye@1.4.0/browser/faye-browser.min.js"
-          onerror="console.error('[Faye] ❌ Script failed to load from CDN — check network/CSP.')"></script>
+  <script src="./faye-browser.min.js"
+          onerror="console.error('[Faye] ❌ faye-browser.min.js failed to load — make sure the file is deployed alongside this HTML.')"></script>
   <script>
     window.define = window._savedDefine;
     delete window._savedDefine;
