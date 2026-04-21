@@ -34,7 +34,7 @@
 
   <main class="main-container">
     <section class="input-container">
-      <label for="scriptSrc">Script Source (src):2</label>
+      <label for="scriptSrc">Script Source (src):</label>
       <input type="text" id="scriptSrc" placeholder="e.g. https://your-org.lightning.force.com/lightning.out.js" />
 
       <label for="lightningEndpoint">Lightning Endpoint (for Lightning Out):</label>
@@ -128,15 +128,37 @@
 
       teardownCometD();
 
-      // disable('websocket') must be called before the first subscribe().
-      // Browsers cannot send Authorization headers in a WebSocket upgrade handshake,
-      // so wss:// to Salesforce always fails cross-origin.
-      // HTTP long-polling carries the Authorization: OAuth header without restriction.
-      // CometD must use the my.salesforce.com instance URL, NOT the lightning.force.com host.
-      // The lightning.force.com host serves Lightning Out JS assets; it does not expose /cometd/.
       const cometdBase = sfInstanceUrl || endpoint;
       const cometdUrl = cometdBase + '/cometd/55.0';
-      console.log('[CometD] Connecting →', cometdUrl, '(instanceUrl =', cometdBase, ')');
+      console.log('[CometD] Connecting →', cometdUrl);
+
+      // ── Preflight probe ────────────────────────────────────────────────────────
+      // Send a CometD handshake directly via fetch so we get the exact HTTP status
+      // and any CORS error message before Faye takes over.
+      fetch(cometdUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'OAuth ' + token
+        },
+        body: JSON.stringify([{ channel: '/meta/handshake', version: '1.0',
+          supportedConnectionTypes: ['long-polling'] }])
+      })
+      .then(function(res) {
+        console.log('[CometD probe] HTTP', res.status, res.statusText,
+          '— CORS passed, server responded.');
+        return res.text();
+      })
+      .then(function(body) {
+        console.log('[CometD probe] Response body:', body.slice(0, 500));
+      })
+      .catch(function(err) {
+        console.error('[CometD probe] ❌ fetch failed — this is the CORS/network block:', err.message,
+          '\nFix: in Salesforce Setup → CORS, confirm the exact origin "' +
+          window.location.origin + '" is listed. Then check Connected App → Trusted URLs too.');
+      });
+      // ── End probe ──────────────────────────────────────────────────────────────
+
       const client = new Faye.Client(cometdUrl);
       client.disable('websocket');
       client.setHeader('Authorization', 'OAuth ' + token);
