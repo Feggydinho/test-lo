@@ -1,354 +1,329 @@
 <!DOCTYPE html>
+<!--
+  Lightning Out — Unified Test Page (LO 1.0 Aura & LO 2.0 LWC)
+  ==============================================================
+  Push this file to your GitHub Pages repo (e.g. feggydinho.github.io).
+
+  ONE setup step required in Salesforce before this works:
+    Setup → CORS → New → add https://feggydinho.github.io
+
+  LO 2.0: paste your access token and click Load — domain and App ID are pre-filled.
+  LO 1.0: paste your access token (domain and Aura app are pre-filled).
+-->
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>LightningOut Standalone</title>
-  <link rel="stylesheet" href="https://jaden2245.github.io/lightningOut/mystyles.css" />
-  <!-- faye-browser: CometD client for cross-origin Salesforce Streaming API.
-       Self-hosted (faye-browser.min.js in same folder) — the jsdelivr/unpkg CDN paths for
-       faye@1.4.x changed; self-hosting eliminates CDN dependency.
-       The AMD workaround (clear window.define) is applied below even here, because the
-       Aura/Lightning Out framework sets window.define and faye's UMD bundle would take the
-       AMD path instead of setting window.Faye. -->
-  <script>
-    // Faye uses a UMD bundle: if window.define exists (AMD) it registers as a module
-    // instead of setting window.Faye.  Clear define before loading so Faye takes the
-    // global path, then restore it (same pattern as the VF page).
-    window._savedDefine = window.define;
-    window.define = undefined;
-  </script>
-  <script src="./faye-browser.min.js"
-          onerror="console.error('[Faye] ❌ faye-browser.min.js failed to load — make sure the file is deployed alongside this HTML.')"></script>
-  <script>
-    window.define = window._savedDefine;
-    delete window._savedDefine;
-    console.log('[Faye] load check:', typeof window.Faye !== 'undefined' ? '✅ window.Faye ready' : '❌ window.Faye is UNDEFINED — CometD streaming will be unavailable');
-  </script>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Lightning Out Test</title>
+<style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0f172a; color: #f1f5f9; }
+
+    /* ── Top bar ── */
+    .bar {
+        display: flex; flex-wrap: wrap; align-items: center; gap: 12px;
+        padding: 10px 16px; background: #1e293b; border-bottom: 2px solid #6366f1;
+    }
+    .bar-title { font-weight: 700; font-size: 14px; white-space: nowrap; }
+
+    /* ── Version toggle ── */
+    .vtoggle {
+        display: flex; border: 1px solid #475569; border-radius: 6px; overflow: hidden;
+    }
+    .vtoggle button {
+        padding: 4px 14px; font-size: 12px; font-weight: 600;
+        background: transparent; color: #94a3b8; border: none; cursor: pointer;
+        transition: background .15s, color .15s;
+    }
+    .vtoggle button.active { background: #6366f1; color: #fff; }
+    .vtoggle button:not(.active):hover { background: #334155; color: #f1f5f9; }
+
+    /* ── Fields ── */
+    .field { display: flex; flex-direction: column; gap: 2px; }
+    .field label { color: #94a3b8; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .5px; }
+    .field input, .field textarea {
+        border: 1px solid #475569; border-radius: 4px; padding: 5px 8px;
+        font-size: 13px; background: #334155; color: #f1f5f9; outline: none;
+    }
+    .field input { min-width: 180px; }
+    .field textarea { min-width: 280px; height: 54px; resize: vertical; font-family: monospace; font-size: 12px; }
+    .field input:focus, .field textarea:focus { border-color: #6366f1; }
+
+    /* de-emphasise the pre-filled fields in LO 2.0 mode */
+    .field.dim label { color: #475569; }
+    .field.dim input { background: #1e293b; color: #64748b; font-size: 12px; }
+
+    .load-btn {
+        padding: 7px 18px; background: #6366f1; color: white; border: none;
+        border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: 600;
+        align-self: flex-end;
+    }
+    .load-btn:hover { background: #4f46e5; }
+    .load-btn:disabled { opacity: .5; cursor: not-allowed; }
+
+    #lo-status { font-size: 12px; align-self: flex-end; padding-bottom: 2px; margin-left: auto; }
+    #lo-status.ok      { color: #4ade80; }
+    #lo-status.err     { color: #f87171; }
+    #lo-status.loading { color: #facc15; }
+
+    #lo-container { height: calc(100vh - 62px); position: relative; overflow: hidden; }
+
+    /* hide LO 1.0 / LO 2.0 field groups based on mode */
+    .v1-only, .v2-only { display: contents; }
+    body.mode-v2 .v1-only { display: none; }
+    body.mode-v1 .v2-only { display: none; }
+</style>
 </head>
-<body>
-  <header class="header">
-    <h1>LightningOut Standalone</h1>
-    <p>GitHub Pages test harness — whitelist this page's origin in Salesforce Setup → CORS</p>
-  </header>
+<body class="mode-v2">
 
-  <main class="main-container">
-    <section class="input-container">
-      <label for="scriptSrc">Script Source (src):</label>
-      <input type="text" id="scriptSrc" placeholder="e.g. https://your-org.lightning.force.com/lightning.out.js" />
+<div class="bar">
+    <span class="bar-title">Lightning Out Test</span>
 
-      <label for="lightningEndpoint">Lightning Endpoint (for Lightning Out):</label>
-      <input type="text" id="lightningEndpoint" placeholder="e.g. https://your-org.lightning.force.com" />
+    <!-- Version toggle -->
+    <div class="vtoggle">
+        <button id="btn-v2" class="active" onclick="setMode('v2')">LO 2.0 (LWC)</button>
+        <button id="btn-v1" onclick="setMode('v1')">LO 1.0 (Aura)</button>
+    </div>
 
-      <label for="instanceUrl">Instance URL (for CometD/Streaming API):</label>
-      <input type="text" id="instanceUrl" placeholder="e.g. https://your-org.my.salesforce.com" />
+    <!-- Shared: domain (always shown, but de-emphasised in v2) -->
+    <div class="field dim" id="field-domain">
+        <label>My Salesforce Domain</label>
+        <input id="lo-domain" type="text"
+               value="https://marriottintl--novrelmock.sandbox.my.salesforce.com"
+               style="min-width:340px"/>
+    </div>
 
-      <label for="tokenUrl">Token URL:</label>
-      <input type="text" id="tokenUrl" placeholder="e.g. https://your-org.lightning.force.com/services/oauth2/token" />
+    <!-- LO 2.0 only: App ID (pre-filled, de-emphasised) -->
+    <div class="field dim v2-only">
+        <label>LO 2.0 App ID</label>
+        <input id="lo2-appid" type="text" value="1UsFZ00000000hZ0AQ" style="min-width:190px"/>
+    </div>
 
-      <label for="jwtToken">JWT / Access Token:</label>
-      <input type="text" id="jwtToken" placeholder="Paste OAuth Bearer token" />
+    <!-- LO 2.0 only: Component name (kebab-case custom element) -->
+    <div class="field v2-only">
+        <label>Component</label>
+        <input id="lo2-component" type="text" value="c-mads-chat-drawer" style="min-width:190px"
+               placeholder="c-lo-test-shell"/>
+    </div>
 
-      <label for="appName">App Name:</label>
-      <input type="text" id="appName" placeholder="e.g. c:spogLightningOut" />
+    <!-- LO 1.0 only: Aura app name (pre-filled, de-emphasised) -->
+    <div class="field dim v1-only">
+        <label>Aura App</label>
+        <input id="lo1-auraapp" type="text" value="c:madsChatLightningOut" style="min-width:190px"/>
+    </div>
 
-      <label for="componentName">Component Name:</label>
-      <input type="text" id="componentName" placeholder="e.g. c:spogLightningOutRedirector" />
+    <!-- Shared: access token — the main thing to paste -->
+    <div class="field">
+        <label>Access Token</label>
+        <textarea id="lo-token" placeholder="00DFZ000000uPer!AQ…"></textarea>
+    </div>
 
-      <button id="loadScriptButton" class="primary-button">Load Script</button>
-    </section>
+    <button class="load-btn" id="lo-load-btn" onclick="loadLO()">Load</button>
+    <span id="lo-status">—</span>
+</div>
 
-    <section class="selection-container">
-      <label for="redirectTypeSelector">Choose a LightningOut View:</label>
-      <select id="redirectTypeSelector" class="dropdown">
-        <option value="Case" selected="selected">Case</option>
-        <option value="LocalPreferences">LocalPreferences</option>
-        <option value="Contact">Contact</option>
-        <option value="ChatDrawer">ChatDrawer</option>
-      </select>
+<div id="lo-container"></div>
 
-      <label for="idSelector">Choose a Case ID:</label>
-      <select id="idSelector" class="dropdown">
-        <option value="500dn000001nP38AAE">Case ID 1 Property_Guest_Experience_GXP</option>
-        <option value="5008A00000EhmxhQAB">Case ID 2 Ambassador File GXP</option>
-      </select>
+<script>
+    var _lo2ScriptInjected = false;
+    var _lo1ScriptInjected = false;
 
-      <button id="renderButton" class="primary-button" disabled="disabled">Render in LightningOut</button>
-    </section>
-
-    <section class="lightning-container">
-      <div data-lightning-out="true"></div>
-    </section>
-
-    <section id="errorContainer" class="error-container"></section>
-  </main>
-
-  <footer class="footer">
-    <p>Rights Reserved.</p>
-  </footer>
-
-  <script>
-    let lightningEndpoint = '';
-    let instanceUrl = '';
-    let tokenUrl = '';
-    let jwtToken = '';
-    let appName = '';
-    let componentName = '';
-    const targetElement = document.querySelector('[data-lightning-out]');
-
-    // Holds the active Faye CometD client used for streaming.
-    // Torn down each time initializeLightningOut is called to avoid duplicate subscriptions.
-    let _sfConn = null;
-
-    function teardownCometD() {
-      if (_sfConn) {
-        try { _sfConn.streaming.disconnect(); } catch (e) { /* ignore */ }
-        _sfConn = null;
-      }
+    // ── Mode toggle ────────────────────────────────────────────────────────────
+    function setMode(v) {
+        document.body.className = 'mode-' + v;
+        document.getElementById('btn-v1').classList.toggle('active', v === 'v1');
+        document.getElementById('btn-v2').classList.toggle('active', v === 'v2');
+        // de-emphasise domain for v2, normal for v1
+        document.getElementById('field-domain').classList.toggle('dim', v === 'v2');
+        setStatus('—', '');
+        document.getElementById('lo-container').innerHTML = '';
+        document.getElementById('lo-load-btn').disabled = false;
     }
 
-    /**
-     * Establishes a CometD streaming connection to the Salesforce org using an
-     * OAuth Bearer token (no session cookie required, works cross-origin).
-     * Subscribes to ChatMessageEvent__e and ChatTypingEvent__e, then injects each
-     * arriving event into the component via the @api bridge methods.
-     *
-     * Prerequisite: the Salesforce org must have this page's origin in Setup → CORS.
-     */
-    function setupCometDStreaming(cmp, endpoint, token, sfInstanceUrl) {
-      if (typeof Faye === 'undefined') {
-        console.error('[CometD] ❌ window.Faye is undefined. Possible causes:\n' +
-          '  1. The faye-browser CDN script failed to load (check Network tab for faye-browser.min.js).\n' +
-          '  2. The AMD workaround (window.define = undefined) ran AFTER Faye loaded — check script order.\n' +
-          '  3. The deployed page is missing the <script> tag for faye-browser entirely.\n' +
-          'Real-time chat events will NOT be delivered until this is fixed.');
-        showError('CometD streaming unavailable: faye-browser.min.js did not load. Check console for details.');
-        return;
-      }
+    function currentMode() {
+        return document.getElementById('btn-v2').classList.contains('active') ? 'v2' : 'v1';
+    }
 
-      teardownCometD();
+    // ── Status helper ──────────────────────────────────────────────────────────
+    function setStatus(msg, cls) {
+        var el = document.getElementById('lo-status');
+        el.textContent = msg;
+        el.className = cls || '';
+    }
 
-      const cometdBase = sfInstanceUrl || endpoint;
-      const cometdUrl = cometdBase + '/cometd/55.0';
-      console.log('[CometD] Connecting →', cometdUrl);
+    // ── Entry point ────────────────────────────────────────────────────────────
+    function loadLO() {
+        if (currentMode() === 'v2') {
+            loadLO2();
+        } else {
+            loadLO1();
+        }
+    }
 
-      // ── Preflight probe ────────────────────────────────────────────────────────
-      // Send a CometD handshake directly via fetch so we get the exact HTTP status
-      // and any CORS error message before Faye takes over.
-      fetch(cometdUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'OAuth ' + token
-        },
-        body: JSON.stringify([{ channel: '/meta/handshake', version: '1.0',
-          supportedConnectionTypes: ['long-polling'] }])
-      })
-      .then(function(res) {
-        console.log('[CometD probe] HTTP', res.status, res.statusText,
-          '— CORS passed, server responded.');
-        return res.text();
-      })
-      .then(function(body) {
-        console.log('[CometD probe] Response body:', body.slice(0, 500));
-      })
-      .catch(function(err) {
-        console.error('[CometD probe] ❌ fetch failed — this is the CORS/network block:', err.message,
-          '\nFix: in Salesforce Setup → CORS, confirm the exact origin "' +
-          window.location.origin + '" is listed. Then check Connected App → Trusted URLs too.');
-      });
-      // ── End probe ──────────────────────────────────────────────────────────────
+    // ══════════════════════════════════════════════════════════════════════════
+    // LO 2.0 — LWC, iframe-based, uses singleaccess → frontdoor URL
+    // ══════════════════════════════════════════════════════════════════════════
+    async function loadLO2() {
+        var domain    = document.getElementById('lo-domain').value.trim().replace(/\/$/, '');
+        var appId     = document.getElementById('lo2-appid').value.trim();
+        var component = (document.getElementById('lo2-component').value.trim() || 'c-mads-chat-drawer').toLowerCase();
+        var token     = document.getElementById('lo-token').value.trim();
 
-      const client = new Faye.Client(cometdUrl);
-      client.disable('websocket');
-      client.setHeader('Authorization', 'OAuth ' + token);
+        if (!domain || !appId || !token) {
+            setStatus('Fill in all fields', 'err');
+            return;
+        }
 
-      // Intercept every CometD message to log server-side rejections (handshake errors, auth failures, etc.)
-      client.addExtension({
-        incoming: function(message, callback) {
-          if (message.successful === false || message.error) {
-            console.error('[CometD] Server rejected message on channel ' + message.channel, {
-              error: message.error,
-              advice: message.advice,
-              ext: message.ext,
-              fullMessage: message
+        document.getElementById('lo-load-btn').disabled = true;
+        setStatus('Getting frontdoor URL…', 'loading');
+
+        try {
+            // Exchange access token → one-time frontdoor URL (60 s TTL).
+            // Requires Salesforce Setup → CORS to include this page's origin.
+            var fdRes = await fetch(domain + '/services/oauth2/singleaccess', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: new URLSearchParams({ access_token: token }).toString()
             });
-          }
-          callback(message);
-        }
-      });
 
-      // Surface Faye transport-level errors (handshake failures, auth rejections, etc.)
-      client.on('transport:down', function() {
-        console.error('[CometD] ❌ transport:down — handshake rejected. Check Network tab for the\n' +
-          '  POST to /cometd/55.0 — if you see 401 the token lacks "api" scope;\n' +
-          '  if you see a CORS error the org CORS list is missing this origin for CometD.');
-      });
-      client.on('transport:up', function() {
-        console.log('[CometD] ✅ transport:up — handshake succeeded, long-poll active.');
-      });
-
-      var chatSub = client.subscribe('/event/ChatMessageEvent__e', function(message) {
-        console.log('[CometD] ChatMessageEvent__e received', message);
-        try { cmp.injectChatEvent(message); }
-        catch (e) { console.error('[CometD] injectChatEvent failed', e); }
-      });
-      chatSub.then(
-        function() { console.log('[CometD] ✅ Subscribed to ChatMessageEvent__e'); },
-        function(err) { console.error('[CometD] ❌ Subscribe to ChatMessageEvent__e failed', err); }
-      );
-
-      var typingSub = client.subscribe('/event/ChatTypingEvent__e', function(message) {
-        console.log('[CometD] ChatTypingEvent__e received', message);
-        try { cmp.injectTypingEvent(message); }
-        catch (e) { console.error('[CometD] injectTypingEvent failed', e); }
-      });
-      typingSub.then(
-        function() { console.log('[CometD] ✅ Subscribed to ChatTypingEvent__e'); },
-        function(err) { console.error('[CometD] ❌ Subscribe to ChatTypingEvent__e failed', err); }
-      );
-
-      _sfConn = { streaming: { disconnect: function() { client.disconnect(); } } };
-      console.log('[CometD] Client created (long-polling, no WebSocket). Waiting for transport:up...');
-    }
-
-    const redirectTypeSelector = document.getElementById('redirectTypeSelector');
-    const idSelector = document.getElementById('idSelector');
-
-    function toggleRecordSelector() {
-      const needsRecordId = redirectTypeSelector.value !== 'ChatDrawer';
-      idSelector.disabled = !needsRecordId;
-      idSelector.style.opacity = needsRecordId ? '1' : '0.5';
-    }
-
-    toggleRecordSelector();
-    redirectTypeSelector.addEventListener('change', toggleRecordSelector);
-
-    document.getElementById('loadScriptButton').addEventListener('click', function() {
-      const scriptSrc = document.getElementById('scriptSrc').value;
-      lightningEndpoint = document.getElementById('lightningEndpoint').value;
-      instanceUrl = document.getElementById('instanceUrl').value || lightningEndpoint.replace('lightning.force.com', 'my.salesforce.com');
-      tokenUrl = document.getElementById('tokenUrl').value;
-      jwtToken = document.getElementById('jwtToken').value;
-      appName = document.getElementById('appName').value;
-      componentName = document.getElementById('componentName').value;
-
-      if (!scriptSrc || !lightningEndpoint || !tokenUrl || !jwtToken || !appName || !componentName) {
-        alert('Please provide all required inputs.');
-        return;
-      }
-
-      const script = document.createElement('script');
-      script.src = scriptSrc;
-      script.onload = function() {
-        console.log('Lightning Out script loaded successfully.');
-        document.getElementById('renderButton').disabled = false;
-      };
-      script.onerror = function() {
-        console.error('Failed to load Lightning Out script. Check the script source URL.');
-        showError('Failed to load Lightning Out script. Check the script source URL and CORS configuration.');
-      };
-      document.head.appendChild(script);
-    });
-
-    function initializeLightningOut(recordId, redirectType) {
-      teardownCometD();
-      targetElement.innerHTML = '';
-      showError('');
-
-      const token = jwtToken;
-      if (!token) {
-        showError('Access token is missing.');
-        return;
-      }
-
-      const start = performance.now();
-      console.log('[LO] init start', { recordId, redirectType, appName, componentName, lightningEndpoint });
-
-      let useCallbackFired = false;
-      const useTimeout = setTimeout(function() {
-        if (!useCallbackFired) {
-          console.error('[LO] $Lightning.use callback did NOT fire yet after 45s.');
-          showError('$Lightning.use did not complete. Check Network for 302/401 and CORS. Likely scope/endpoint mismatch.');
-        }
-      }, 45000);
-
-      try {
-        $Lightning.use(
-          appName,
-          function() {
-            useCallbackFired = true;
-            clearTimeout(useTimeout);
-            showError(''); // clear any false-positive timeout error
-
-            console.log('[LO] $Lightning.use callback fired', { elapsedMs: Math.round(performance.now() - start) });
-
-            const componentAttrs = { redirectType: redirectType };
-            if (recordId) {
-              componentAttrs.recordId = recordId;
+            if (!fdRes.ok) {
+                var errText = await fdRes.text();
+                throw new Error('singleaccess ' + fdRes.status + ': ' + errText.slice(0, 200));
             }
 
-            $Lightning.createComponent(
-              componentName,
-              componentAttrs,
-              targetElement,
-              function(cmp) {
-                console.log('[LO] createComponent callback fired', {
-                  elapsedMs: Math.round(performance.now() - start),
-                  cmpExists: !!cmp,
-                  redirectType: redirectType
-                });
+            var fdData = await fdRes.json();
+            var frontdoorUrl = fdData.frontdoor_url;
+            if (!frontdoorUrl) throw new Error('No frontdoor_url in response: ' + JSON.stringify(fdData));
+            console.log('[LO2] Frontdoor URL obtained', frontdoorUrl.slice(0, 80) + '…');
 
-                if (!cmp) {
-                  showError('createComponent returned no component instance. Check console for Aura errors.');
-                  return;
-                }
+            // Inject LO 2.0 bootstrap script once per page load.
+            if (!_lo2ScriptInjected) {
+                _lo2ScriptInjected = true;
+                var s = document.createElement('script');
+                s.src = domain + '/lightning/lightning.out.latest/index.iife.prod.js';
+                s.type = 'text/javascript';
+                s.async = true;
+                document.head.appendChild(s);
+                console.log('[LO2] Script injected', s.src);
+            }
 
-                // Wire up real-time streaming for ChatDrawer via CometD + Bearer token.
-                // This is the cross-origin alternative to lightning/empApi (which requires cookies).
-                if (redirectType === 'ChatDrawer') {
-                  setupCometDStreaming(cmp, lightningEndpoint, token, instanceUrl);
+            // Mount: <lightning-out-application> and <c-mads-chat-drawer> as siblings.
+            // is-lightning-out   → @api isLightningOut     (skips NavigationMixin)
+            // disable-utility-sync → @api disableUtilitySync (skips platformUtilityBarApi)
+            var container = document.getElementById('lo-container');
+            container.innerHTML = '';
+
+            var loApp = document.createElement('lightning-out-application');
+            loApp.setAttribute('frontdoor-url', frontdoorUrl);
+            loApp.setAttribute('app-id', appId);
+            loApp.setAttribute('components', component);
+
+            var drawer = document.createElement(component);
+            drawer.setAttribute('is-lightning-out', 'true');
+            drawer.setAttribute('disable-utility-sync', 'true');
+
+            loApp.addEventListener('lo.application.ready', function () {
+                console.log('[LO2] ✅ Application ready');
+                setStatus('✓ Chat drawer loaded (LO 2.0)', 'ok');
+                document.getElementById('lo-load-btn').disabled = false;
+            });
+
+            loApp.addEventListener('lo.application.error', function (e) {
+                var msg = e.detail ? (e.detail.message || JSON.stringify(e.detail)) : 'unknown';
+                console.error('[LO2] ❌ Application error', e.detail);
+                setStatus('✗ ' + msg, 'err');
+                document.getElementById('lo-load-btn').disabled = false;
+            });
+
+            container.appendChild(loApp);
+            container.appendChild(drawer);
+            setStatus('Mounting…', 'loading');
+
+        } catch (err) {
+            console.error('[LO2] Failed', err);
+            setStatus('✗ ' + err.message, 'err');
+            document.getElementById('lo-load-btn').disabled = false;
+        }
+    }
+
+    // ══════════════════════════════════════════════════════════════════════════
+    // LO 1.0 — Aura, uses $Lightning.use() + $Lightning.createComponent()
+    // ══════════════════════════════════════════════════════════════════════════
+    function loadLO1() {
+        var domain   = document.getElementById('lo-domain').value.trim().replace(/\/$/, '');
+        var auraApp  = document.getElementById('lo1-auraapp').value.trim();
+        var token    = document.getElementById('lo-token').value.trim();
+
+        if (!domain || !auraApp || !token) {
+            setStatus('Fill in all fields', 'err');
+            return;
+        }
+
+        document.getElementById('lo-load-btn').disabled = true;
+        setStatus('Loading Aura runtime…', 'loading');
+
+        var scriptSrc   = domain + '/lightning/lightning.out.js';
+        var endpointUrl = domain;
+
+        var container = document.getElementById('lo-container');
+        container.innerHTML = '';
+
+        function init() {
+            if (!window.$Lightning) {
+                setStatus('✗ $Lightning not found after script load', 'err');
+                document.getElementById('lo-load-btn').disabled = false;
+                return;
+            }
+
+            console.log('[LO1] Calling $Lightning.use()', { app: auraApp, endpointUrl: endpointUrl });
+            setStatus('Calling $Lightning.use()…', 'loading');
+
+            window.$Lightning.use(
+                auraApp,
+                function () {
+                    console.log('[LO1] ✅ $Lightning.use callback — creating component');
+                    setStatus('Creating component…', 'loading');
+
+                    window.$Lightning.createComponent(
+                        'c:wrapperMADSLightningOutShell',
+                        {},
+                        container,
+                        function (cmp, status) {
+                            console.log('[LO1] createComponent callback', { status: status, cmpExists: !!cmp });
+                            if (status === 'SUCCESS') {
+                                setStatus('✓ Chat drawer loaded (LO 1.0)', 'ok');
+                            } else {
+                                setStatus('✗ createComponent status: ' + status, 'err');
+                            }
+                            document.getElementById('lo-load-btn').disabled = false;
+                        }
+                    );
+                },
+                endpointUrl,
+                token,
+                function () {
+                    console.log('[LO1] readyCallback fired');
                 }
-              }
             );
-          },
-          lightningEndpoint,
-          token
-        );
-      } catch (e) {
-        clearTimeout(useTimeout);
-        console.error('[LO] Exception thrown calling $Lightning.use', e);
-        showError('Exception calling $Lightning.use: ' + (e && e.message ? e.message : String(e)));
-      }
+        }
+
+        if (_lo1ScriptInjected) {
+            init();
+        } else {
+            _lo1ScriptInjected = true;
+            var s = document.createElement('script');
+            s.src = scriptSrc;
+            s.async = true;
+            s.addEventListener('load', init);
+            s.addEventListener('error', function () {
+                setStatus('✗ Failed to load lightning.out.js', 'err');
+                document.getElementById('lo-load-btn').disabled = false;
+            });
+            document.head.appendChild(s);
+            console.log('[LO1] Script injected', scriptSrc);
+        }
     }
+</script>
 
-    function showError(msg) {
-      const errorContainer = document.getElementById('errorContainer');
-      if (errorContainer) {
-        errorContainer.innerHTML = msg ? '<p style="color:red;">' + escapeHtml(msg) + '</p>' : '';
-      }
-    }
-
-    function escapeHtml(s) {
-      return String(s).replace(/[&<>"']/g, function(c) {
-        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
-      });
-    }
-
-    document.getElementById('renderButton').addEventListener('click', function() {
-      const selectedRedirectType = redirectTypeSelector.value;
-      const selectedId = selectedRedirectType === 'ChatDrawer' ? null : idSelector.value;
-      initializeLightningOut(selectedId, selectedRedirectType);
-    });
-
-    window.addEventListener('lightningError', function(e) {
-      const errorDetail = e.detail;
-      console.error('Received lightningError event:', errorDetail);
-      const errorContainer = document.getElementById('errorContainer');
-      if (errorContainer) {
-        errorContainer.innerHTML = '<p style="color:red;">Error: ' + escapeHtml((errorDetail && errorDetail.message) || 'Unknown error') + '</p>';
-      }
-    });
-  </script>
 </body>
 </html>
