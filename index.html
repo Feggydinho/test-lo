@@ -15,7 +15,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>Lightning Out Test 1</title>
+<title>Lightning Out Test</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0f172a; color: #f1f5f9; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
@@ -105,7 +105,7 @@
 <body class="mode-v2">
 
 <div class="bar">
-  <span class="bar-title">Lightning Out Test 1</span>
+  <span class="bar-title">Lightning Out Test</span>
 
   <div class="vtoggle">
     <button id="btn-v2" class="active" onclick="setMode('v2')">LO 2.0 (LWC)</button>
@@ -137,8 +137,20 @@
     <input id="lo1-auraapp" type="text" value="c:madsChatLightningOut" style="min-width:190px"/>
   </div>
 
+  <!-- LO 2.0 auth: two options.
+       Option A (preferred): paste the frontdoor URL directly from SPOG's console log
+         (shown as HTTP 200 {"frontdoorUrl":"https://...frontdoor.jsp?otp=..."}).
+         60-second TTL — paste and click Load quickly.
+       Option B: paste access token — page calls singleaccess client-side.
+         NOTE: Salesforce OAuth endpoints often block browser CORS even with *.github.io
+         in the CORS allowed list, so Option A is more reliable from GitHub Pages. -->
+  <div class="field v2-only">
+    <label>Frontdoor URL <span style="color:#475569;font-weight:400;text-transform:none;letter-spacing:0">(from SPOG console — skips singleaccess, 60 s TTL)</span></label>
+    <textarea id="lo2-frontdoor" placeholder="https://…my.salesforce.com/secur/frontdoor.jsp?otp=…" style="min-width:320px;height:40px;font-size:11px"></textarea>
+  </div>
+
   <div class="field">
-    <label>Access Token</label>
+    <label>Access Token <span class="v2-only" style="color:#475569;font-weight:400;text-transform:none;letter-spacing:0">(used only if Frontdoor URL above is empty)</span></label>
     <textarea id="lo-token" placeholder="00DFZ000000uPer!AQ…"></textarea>
   </div>
 
@@ -220,46 +232,62 @@
   // LO 2.0 — LWC, iframe-based
   // ══════════════════════════════════════════════════════════════════════════
   async function loadLO2() {
-    var domain    = document.getElementById('lo-domain').value.trim().replace(/\/$/, '');
-    var appId     = document.getElementById('lo2-appid').value.trim();
-    var component = (document.getElementById('lo2-component').value.trim() || 'c-lo-test-shell').toLowerCase();
-    var token     = document.getElementById('lo-token').value.trim();
+    var domain       = document.getElementById('lo-domain').value.trim().replace(/\/$/, '');
+    var appId        = document.getElementById('lo2-appid').value.trim();
+    var component    = (document.getElementById('lo2-component').value.trim() || 'c-lo-test-shell').toLowerCase();
+    var pastedFdUrl  = document.getElementById('lo2-frontdoor').value.trim();
+    var token        = document.getElementById('lo-token').value.trim();
 
-    if (!domain || !appId || !token) { setStatus('Fill in all fields', 'err'); return; }
+    if (!domain || !appId) { setStatus('Fill in domain and App ID', 'err'); return; }
+    if (!pastedFdUrl && !token) { setStatus('Paste a Frontdoor URL or Access Token', 'err'); return; }
 
     document.getElementById('lo-load-btn').disabled = true;
     log('── Starting LO 2.0 ──────────────────');
     log('domain: ' + domain);
     log('appId: ' + appId);
     log('component: ' + component);
-    log('token: ' + token.slice(0, 20) + '…');
-    setStatus('Getting frontdoor URI…', 'loading');
+
+    var frontdoorUrl;
 
     try {
-      // ── Step 1: singleaccess → frontdoor URI ─────────────────────────────
-      log('Calling singleaccess endpoint…');
-      var fdRes = await fetch(domain + '/services/oauth2/singleaccess', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams({ access_token: token }).toString()
-      });
+      // ── Step 1: get frontdoor URL ─────────────────────────────────────────
+      if (pastedFdUrl) {
+        // Option A: user pasted frontdoor URL directly (from SPOG console log).
+        // Bypasses singleaccess — avoids Salesforce OAuth CORS restrictions.
+        frontdoorUrl = pastedFdUrl;
+        log('Using pasted frontdoor URL (skipping singleaccess): ' + frontdoorUrl.slice(0, 80) + '…', 'ok');
+        setStatus('Frontdoor URL provided — loading script…', 'loading');
+      } else {
+        // Option B: call singleaccess with the access token.
+        // NOTE: Salesforce OAuth endpoints may block browser CORS even with the origin
+        // in the CORS allowed list. If this fails with "Failed to fetch", use Option A.
+        log('token: ' + token.slice(0, 20) + '…');
+        log('Calling singleaccess (browser CORS — may fail; use Frontdoor URL field if so)…', 'warn');
+        setStatus('Calling singleaccess…', 'loading');
 
-      var fdText = await fdRes.text();
-      log('singleaccess → HTTP ' + fdRes.status + '  body: ' + fdText.slice(0, 200),
-          fdRes.ok ? 'info' : 'error');
+        var fdRes = await fetch(domain + '/services/oauth2/singleaccess', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: new URLSearchParams({ access_token: token }).toString()
+        });
 
-      if (!fdRes.ok) {
-        throw new Error('singleaccess ' + fdRes.status + ': ' + fdText.slice(0, 150));
+        var fdText = await fdRes.text();
+        log('singleaccess → HTTP ' + fdRes.status + '  body: ' + fdText.slice(0, 200),
+            fdRes.ok ? 'info' : 'error');
+
+        if (!fdRes.ok) {
+          throw new Error('singleaccess ' + fdRes.status + ': ' + fdText.slice(0, 150));
+        }
+
+        var fdData = JSON.parse(fdText);
+        // Salesforce returns "frontdoor_uri" (ending in i), NOT "frontdoor_url".
+        frontdoorUrl = fdData.frontdoor_uri;
+        if (!frontdoorUrl) {
+          log('Response keys: ' + Object.keys(fdData).join(', '), 'warn');
+          throw new Error('frontdoor_uri missing. Keys: ' + Object.keys(fdData).join(', '));
+        }
+        log('✅ frontdoor_uri obtained: ' + frontdoorUrl.slice(0, 80) + '…', 'ok');
       }
-
-      var fdData = JSON.parse(fdText);
-      // Salesforce returns "frontdoor_uri" (ending in i), NOT "frontdoor_url".
-      var frontdoorUrl = fdData.frontdoor_uri;
-      if (!frontdoorUrl) {
-        log('Response keys: ' + Object.keys(fdData).join(', '), 'warn');
-        throw new Error('frontdoor_uri missing from singleaccess response. Keys: ' + Object.keys(fdData).join(', '));
-      }
-      log('✅ frontdoor_uri obtained: ' + frontdoorUrl.slice(0, 80) + '…', 'ok');
 
       // ── Step 2: inject bootstrap script and WAIT for it to load ──────────
       setStatus('Loading LO 2.0 script…', 'loading');
@@ -339,9 +367,11 @@
         document.removeEventListener('securitypolicyviolation', cspHandler);
       }, 30000);
 
+      // LO 2.0 requires the component to be a CHILD of <lightning-out-application>,
+      // not a sibling, so the framework can associate it with the iframe session.
+      loApp.appendChild(el);
       container.appendChild(loApp);
-      container.appendChild(el);
-      log('Elements appended to container — waiting for lo.application.ready…');
+      log('Elements appended — <' + component + '> nested inside <lightning-out-application>');
       setStatus('Waiting for ready…', 'loading');
 
     } catch (err) {
