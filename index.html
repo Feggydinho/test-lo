@@ -4,12 +4,11 @@
   ==============================================================
   Push this file to your GitHub Pages repo (e.g. feggydinho.github.io).
 
-  Before this works, add the GitHub Pages origin to Salesforce:
-    1. Setup → Security → CORS → New → https://feggydinho.github.io
-    2. Setup → App Manager → [your LO 2.0 app] → Host Page Domain Names → https://feggydinho.github.io
-    3. Setup → Session Settings → Trusted Domains → Add Domain → https://feggydinho.github.io  (IFrame Type: LightningOut)
+  ONE setup step required in Salesforce before this works:
+    Setup → CORS → New → add https://feggydinho.github.io
 
-  Same three steps for https://localhost:4200 when testing locally.
+  LO 2.0: paste your access token and click Load — domain and App ID are pre-filled.
+  LO 1.0: paste your access token (domain and Aura app are pre-filled).
 -->
 <html lang="en">
 <head>
@@ -17,446 +16,313 @@
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
 <title>Lightning Out Test</title>
 <style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0f172a; color: #f1f5f9; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0f172a; color: #f1f5f9; }
 
-  /* ── Top bar ── */
-  .bar {
-    flex-shrink: 0;
-    display: flex; flex-wrap: wrap; align-items: center; gap: 12px;
-    padding: 10px 16px; background: #1e293b; border-bottom: 2px solid #6366f1;
-  }
-  .bar-title { font-weight: 700; font-size: 14px; white-space: nowrap; }
+    /* ── Top bar ── */
+    .bar {
+        display: flex; flex-wrap: wrap; align-items: center; gap: 12px;
+        padding: 10px 16px; background: #1e293b; border-bottom: 2px solid #6366f1;
+    }
+    .bar-title { font-weight: 700; font-size: 14px; white-space: nowrap; }
 
-  /* ── Version toggle ── */
-  .vtoggle { display: flex; border: 1px solid #475569; border-radius: 6px; overflow: hidden; }
-  .vtoggle button {
-    padding: 4px 14px; font-size: 12px; font-weight: 600;
-    background: transparent; color: #94a3b8; border: none; cursor: pointer;
-    transition: background .15s, color .15s;
-  }
-  .vtoggle button.active { background: #6366f1; color: #fff; }
-  .vtoggle button:not(.active):hover { background: #334155; color: #f1f5f9; }
+    /* ── Version toggle ── */
+    .vtoggle {
+        display: flex; border: 1px solid #475569; border-radius: 6px; overflow: hidden;
+    }
+    .vtoggle button {
+        padding: 4px 14px; font-size: 12px; font-weight: 600;
+        background: transparent; color: #94a3b8; border: none; cursor: pointer;
+        transition: background .15s, color .15s;
+    }
+    .vtoggle button.active { background: #6366f1; color: #fff; }
+    .vtoggle button:not(.active):hover { background: #334155; color: #f1f5f9; }
 
-  /* ── Fields ── */
-  .field { display: flex; flex-direction: column; gap: 2px; }
-  .field label { color: #94a3b8; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .5px; }
-  .field input, .field textarea {
-    border: 1px solid #475569; border-radius: 4px; padding: 5px 8px;
-    font-size: 13px; background: #334155; color: #f1f5f9; outline: none;
-  }
-  .field input { min-width: 180px; }
-  .field textarea { min-width: 280px; height: 54px; resize: vertical; font-family: monospace; font-size: 12px; }
-  .field input:focus, .field textarea:focus { border-color: #6366f1; }
-  .field.dim label { color: #475569; }
-  .field.dim input { background: #1e293b; color: #64748b; font-size: 12px; }
+    /* ── Fields ── */
+    .field { display: flex; flex-direction: column; gap: 2px; }
+    .field label { color: #94a3b8; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .5px; }
+    .field input, .field textarea {
+        border: 1px solid #475569; border-radius: 4px; padding: 5px 8px;
+        font-size: 13px; background: #334155; color: #f1f5f9; outline: none;
+    }
+    .field input { min-width: 180px; }
+    .field textarea { min-width: 280px; height: 54px; resize: vertical; font-family: monospace; font-size: 12px; }
+    .field input:focus, .field textarea:focus { border-color: #6366f1; }
 
-  .load-btn {
-    padding: 7px 18px; background: #6366f1; color: white; border: none;
-    border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: 600;
-    align-self: flex-end;
-  }
-  .load-btn:hover { background: #4f46e5; }
-  .load-btn:disabled { opacity: .5; cursor: not-allowed; }
+    /* de-emphasise the pre-filled fields in LO 2.0 mode */
+    .field.dim label { color: #475569; }
+    .field.dim input { background: #1e293b; color: #64748b; font-size: 12px; }
 
-  #lo-status { font-size: 12px; align-self: flex-end; padding-bottom: 2px; margin-left: auto; }
-  #lo-status.ok      { color: #4ade80; }
-  #lo-status.err     { color: #f87171; }
-  #lo-status.loading { color: #facc15; }
+    .load-btn {
+        padding: 7px 18px; background: #6366f1; color: white; border: none;
+        border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: 600;
+        align-self: flex-end;
+    }
+    .load-btn:hover { background: #4f46e5; }
+    .load-btn:disabled { opacity: .5; cursor: not-allowed; }
 
-  /* ── Main split: component area + log panel ── */
-  .main { display: flex; flex: 1; overflow: hidden; }
-  #lo-container { flex: 1; position: relative; overflow: hidden; }
+    #lo-status { font-size: 12px; align-self: flex-end; padding-bottom: 2px; margin-left: auto; }
+    #lo-status.ok      { color: #4ade80; }
+    #lo-status.err     { color: #f87171; }
+    #lo-status.loading { color: #facc15; }
 
-  /* ── Log panel ── */
-  #log-panel {
-    width: 320px; flex-shrink: 0;
-    background: #0f172a; border-left: 1px solid #334155;
-    display: flex; flex-direction: column;
-  }
-  #log-header {
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 6px 10px; background: #1e293b; border-bottom: 1px solid #334155;
-    font-size: 11px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: .5px;
-    flex-shrink: 0;
-  }
-  #log-header button {
-    font-size: 10px; padding: 2px 7px; background: #334155; color: #94a3b8;
-    border: none; border-radius: 3px; cursor: pointer;
-  }
-  #log-header button:hover { background: #475569; color: #f1f5f9; }
-  #log-entries {
-    flex: 1; overflow-y: auto; padding: 6px 0;
-    font-family: monospace; font-size: 11px; line-height: 1.5;
-  }
-  .log-entry { padding: 2px 10px; border-bottom: 1px solid #1e293b; word-break: break-all; }
-  .log-entry .ts { color: #475569; margin-right: 6px; }
-  .log-entry.info  .msg { color: #94a3b8; }
-  .log-entry.ok    .msg { color: #4ade80; }
-  .log-entry.warn  .msg { color: #facc15; }
-  .log-entry.error .msg { color: #f87171; }
+    #lo-container { height: calc(100vh - 62px); position: relative; overflow: hidden; }
 
-  /* hide LO 1.0 / LO 2.0 field groups based on mode */
-  .v1-only, .v2-only { display: contents; }
-  body.mode-v2 .v1-only { display: none; }
-  body.mode-v1 .v2-only { display: none; }
+    /* hide LO 1.0 / LO 2.0 field groups based on mode */
+    .v1-only, .v2-only { display: contents; }
+    body.mode-v2 .v1-only { display: none; }
+    body.mode-v1 .v2-only { display: none; }
 </style>
 </head>
 <body class="mode-v2">
 
 <div class="bar">
-  <span class="bar-title">Lightning Out Test</span>
+    <span class="bar-title">Lightning Out Test</span>
 
-  <div class="vtoggle">
-    <button id="btn-v2" class="active" onclick="setMode('v2')">LO 2.0 (LWC)</button>
-    <button id="btn-v1" onclick="setMode('v1')">LO 1.0 (Aura)</button>
-  </div>
-
-  <div class="field dim" id="field-domain">
-    <label>My Salesforce Domain</label>
-    <input id="lo-domain" type="text"
-           value="https://marriottintl--novrelmock.sandbox.my.salesforce.com"
-           style="min-width:340px"/>
-  </div>
-
-  <!-- LO 2.0 only -->
-  <div class="field dim v2-only">
-    <label>LO 2.0 App ID</label>
-    <!-- NOTE: verify this matches Setup → App Manager → your LO 2.0 app → App ID -->
-    <input id="lo2-appid" type="text" value="1UsFZ00000000jB0AQ" style="min-width:190px"/>
-  </div>
-  <div class="field v2-only">
-    <label>Component (kebab-case)</label>
-    <input id="lo2-component" type="text" value="c-lo-test-shell" style="min-width:190px"
-           placeholder="c-mads-chat-drawer"/>
-  </div>
-
-  <!-- LO 1.0 only -->
-  <div class="field dim v1-only">
-    <label>Aura App</label>
-    <input id="lo1-auraapp" type="text" value="c:madsChatLightningOut" style="min-width:190px"/>
-  </div>
-
-  <!-- LO 2.0 auth: two options.
-       Option A (preferred): paste the frontdoor URL directly from SPOG's console log
-         (shown as HTTP 200 {"frontdoorUrl":"https://...frontdoor.jsp?otp=..."}).
-         60-second TTL — paste and click Load quickly.
-       Option B: paste access token — page calls singleaccess client-side.
-         NOTE: Salesforce OAuth endpoints often block browser CORS even with *.github.io
-         in the CORS allowed list, so Option A is more reliable from GitHub Pages. -->
-  <div class="field v2-only">
-    <label>Frontdoor URL <span style="color:#475569;font-weight:400;text-transform:none;letter-spacing:0">(from SPOG console — skips singleaccess, 60 s TTL)</span></label>
-    <textarea id="lo2-frontdoor" placeholder="https://…my.salesforce.com/secur/frontdoor.jsp?otp=…" style="min-width:320px;height:40px;font-size:11px"></textarea>
-  </div>
-
-  <div class="field">
-    <label>Access Token <span class="v2-only" style="color:#475569;font-weight:400;text-transform:none;letter-spacing:0">(used only if Frontdoor URL above is empty)</span></label>
-    <textarea id="lo-token" placeholder="00DFZ000000uPer!AQ…"></textarea>
-  </div>
-
-  <button class="load-btn" id="lo-load-btn" onclick="loadLO()">Load</button>
-  <span id="lo-status">—</span>
-</div>
-
-<div class="main">
-  <div id="lo-container"></div>
-
-  <div id="log-panel">
-    <div id="log-header">
-      <span>Console Log</span>
-      <button onclick="clearLog()">Clear</button>
+    <!-- Version toggle -->
+    <div class="vtoggle">
+        <button id="btn-v2" class="active" onclick="setMode('v2')">LO 2.0 (LWC)</button>
+        <button id="btn-v1" onclick="setMode('v1')">LO 1.0 (Aura)</button>
     </div>
-    <div id="log-entries"></div>
-  </div>
+
+    <!-- Shared: domain (always shown, but de-emphasised in v2) -->
+    <div class="field dim" id="field-domain">
+        <label>My Salesforce Domain</label>
+        <input id="lo-domain" type="text"
+               value="https://marriottintl--novrelmock.sandbox.my.salesforce.com"
+               style="min-width:340px"/>
+    </div>
+
+    <!-- LO 2.0 only: App ID (pre-filled, de-emphasised) -->
+    <div class="field dim v2-only">
+        <label>LO 2.0 App ID</label>
+        <input id="lo2-appid" type="text" value="1UsFZ00000000jB0AQ" style="min-width:190px"/>
+    </div>
+
+    <!-- LO 2.0 only: Component name (kebab-case custom element) -->
+    <div class="field v2-only">
+        <label>Component</label>
+        <input id="lo2-component" type="text" value="c-lo-test-shell" style="min-width:190px"
+               placeholder="c-lo-test-shell"/>
+    </div>
+
+    <!-- LO 1.0 only: Aura app name (pre-filled, de-emphasised) -->
+    <div class="field dim v1-only">
+        <label>Aura App</label>
+        <input id="lo1-auraapp" type="text" value="c:madsChatLightningOut" style="min-width:190px"/>
+    </div>
+
+    <!-- Shared: access token — the main thing to paste -->
+    <div class="field">
+        <label>Access Token</label>
+        <textarea id="lo-token" placeholder="00DFZ000000uPer!AQ…"></textarea>
+    </div>
+
+    <button class="load-btn" id="lo-load-btn" onclick="loadLO()">Load</button>
+    <span id="lo-status">—</span>
 </div>
+
+<div id="lo-container"></div>
 
 <script>
-  // ── Persistent state ───────────────────────────────────────────────────────
-  // Store the script load Promise so concurrent/repeated clicks await the same load.
-  // Reset to null on script error so the next click retries.
-  var _lo2ScriptPromise = null;
-  var _lo1ScriptInjected = false;
+    var _lo2ScriptInjected = false;
+    var _lo1ScriptInjected = false;
 
-  // ── Log panel ──────────────────────────────────────────────────────────────
-  function log(msg, level) {
-    var lvl = level || 'info';
-    var now = new Date();
-    var ts = now.toTimeString().slice(0, 8) + '.' + String(now.getMilliseconds()).padStart(3, '0');
-
-    // Also write to browser console
-    var consoleFn = lvl === 'error' ? console.error : lvl === 'warn' ? console.warn : console.log;
-    consoleFn('[LO-Test] ' + msg);
-
-    var entries = document.getElementById('log-entries');
-    var row = document.createElement('div');
-    row.className = 'log-entry ' + lvl;
-    row.innerHTML = '<span class="ts">' + ts + '</span><span class="msg">' + escHtml(msg) + '</span>';
-    entries.appendChild(row);
-    entries.scrollTop = entries.scrollHeight;
-  }
-
-  function escHtml(s) {
-    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-  }
-
-  function clearLog() {
-    document.getElementById('log-entries').innerHTML = '';
-  }
-
-  // ── Mode toggle ────────────────────────────────────────────────────────────
-  function setMode(v) {
-    document.body.className = 'mode-' + v;
-    document.getElementById('btn-v1').classList.toggle('active', v === 'v1');
-    document.getElementById('btn-v2').classList.toggle('active', v === 'v2');
-    document.getElementById('field-domain').classList.toggle('dim', v === 'v2');
-    setStatus('—', '');
-    document.getElementById('lo-container').innerHTML = '';
-    document.getElementById('lo-load-btn').disabled = false;
-  }
-
-  function currentMode() {
-    return document.getElementById('btn-v2').classList.contains('active') ? 'v2' : 'v1';
-  }
-
-  function setStatus(msg, cls) {
-    var el = document.getElementById('lo-status');
-    el.textContent = msg;
-    el.className = cls || '';
-  }
-
-  function loadLO() {
-    currentMode() === 'v2' ? loadLO2() : loadLO1();
-  }
-
-  // ══════════════════════════════════════════════════════════════════════════
-  // LO 2.0 — LWC, iframe-based
-  // ══════════════════════════════════════════════════════════════════════════
-  async function loadLO2() {
-    var domain       = document.getElementById('lo-domain').value.trim().replace(/\/$/, '');
-    var appId        = document.getElementById('lo2-appid').value.trim();
-    var component    = (document.getElementById('lo2-component').value.trim() || 'c-lo-test-shell').toLowerCase();
-    var pastedFdUrl  = document.getElementById('lo2-frontdoor').value.trim();
-    var token        = document.getElementById('lo-token').value.trim();
-
-    if (!domain || !appId) { setStatus('Fill in domain and App ID', 'err'); return; }
-    if (!pastedFdUrl && !token) { setStatus('Paste a Frontdoor URL or Access Token', 'err'); return; }
-
-    document.getElementById('lo-load-btn').disabled = true;
-    log('── Starting LO 2.0 ──────────────────');
-    log('domain: ' + domain);
-    log('appId: ' + appId);
-    log('component: ' + component);
-
-    var frontdoorUrl;
-
-    try {
-      // ── Step 1: get frontdoor URL ─────────────────────────────────────────
-      if (pastedFdUrl) {
-        // Option A: user pasted frontdoor URL directly (from SPOG console log).
-        // Bypasses singleaccess — avoids Salesforce OAuth CORS restrictions.
-        frontdoorUrl = pastedFdUrl;
-        log('Using pasted frontdoor URL (skipping singleaccess): ' + frontdoorUrl.slice(0, 80) + '…', 'ok');
-        setStatus('Frontdoor URL provided — loading script…', 'loading');
-      } else {
-        // Option B: call singleaccess with the access token.
-        // NOTE: Salesforce OAuth endpoints may block browser CORS even with the origin
-        // in the CORS allowed list. If this fails with "Failed to fetch", use Option A.
-        log('token: ' + token.slice(0, 20) + '…');
-        log('Calling singleaccess (browser CORS — may fail; use Frontdoor URL field if so)…', 'warn');
-        setStatus('Calling singleaccess…', 'loading');
-
-        var fdRes = await fetch(domain + '/services/oauth2/singleaccess', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-          body: new URLSearchParams({ access_token: token }).toString()
-        });
-
-        var fdText = await fdRes.text();
-        log('singleaccess → HTTP ' + fdRes.status + '  body: ' + fdText.slice(0, 200),
-            fdRes.ok ? 'info' : 'error');
-
-        if (!fdRes.ok) {
-          throw new Error('singleaccess ' + fdRes.status + ': ' + fdText.slice(0, 150));
-        }
-
-        var fdData = JSON.parse(fdText);
-        // Salesforce returns "frontdoor_uri" (ending in i), NOT "frontdoor_url".
-        frontdoorUrl = fdData.frontdoor_uri;
-        if (!frontdoorUrl) {
-          log('Response keys: ' + Object.keys(fdData).join(', '), 'warn');
-          throw new Error('frontdoor_uri missing. Keys: ' + Object.keys(fdData).join(', '));
-        }
-        log('✅ frontdoor_uri obtained: ' + frontdoorUrl.slice(0, 80) + '…', 'ok');
-      }
-
-      // ── Step 2: inject bootstrap script and WAIT for it to load ──────────
-      setStatus('Loading LO 2.0 script…', 'loading');
-      var scriptSrc = domain + '/lightning/lightning.out.latest/index.iife.prod.js';
-
-      if (!_lo2ScriptPromise) {
-        log('Injecting bootstrap script: ' + scriptSrc);
-        _lo2ScriptPromise = new Promise(function(resolve, reject) {
-          var s = document.createElement('script');
-          s.src = scriptSrc;
-          s.type = 'text/javascript';
-          s.onload = function() {
-            log('✅ Bootstrap script loaded', 'ok');
-            log('lightning-out-application in customElements registry: ' +
-                !!customElements.get('lightning-out-application'),
-                customElements.get('lightning-out-application') ? 'ok' : 'warn');
-            resolve();
-          };
-          s.onerror = function() {
-            _lo2ScriptPromise = null; // reset so next click retries
-            reject(new Error('Failed to load script from: ' + scriptSrc));
-          };
-          document.head.appendChild(s);
-        });
-      } else {
-        log('Bootstrap script already injected — awaiting existing load…');
-      }
-
-      await _lo2ScriptPromise;
-
-      // ── Step 3: mount elements ────────────────────────────────────────────
-      setStatus('Mounting…', 'loading');
-
-      var container = document.getElementById('lo-container');
-      container.innerHTML = '';
-
-      var loApp = document.createElement('lightning-out-application');
-      loApp.setAttribute('frontdoor-url', frontdoorUrl);
-      loApp.setAttribute('app-id', appId);
-      loApp.setAttribute('components', component);
-      log('Created <lightning-out-application> — frontdoor-url set, app-id: ' + appId + ', components: ' + component);
-
-      var el = document.createElement(component);
-      el.setAttribute('is-lightning-out', 'true');
-      el.setAttribute('disable-utility-sync', 'true');
-      log('Created <' + component + '>');
-
-      loApp.addEventListener('lo.application.ready', function() {
-        log('✅ lo.application.ready fired — component rendered', 'ok');
-        setStatus('✓ Loaded (LO 2.0)', 'ok');
+    // ── Mode toggle ────────────────────────────────────────────────────────────
+    function setMode(v) {
+        document.body.className = 'mode-' + v;
+        document.getElementById('btn-v1').classList.toggle('active', v === 'v1');
+        document.getElementById('btn-v2').classList.toggle('active', v === 'v2');
+        // de-emphasise domain for v2, normal for v1
+        document.getElementById('field-domain').classList.toggle('dim', v === 'v2');
+        setStatus('—', '');
+        document.getElementById('lo-container').innerHTML = '';
         document.getElementById('lo-load-btn').disabled = false;
-      });
-
-      loApp.addEventListener('lo.application.error', function(e) {
-        var detail = e.detail || {};
-        log('❌ lo.application.error: ' + JSON.stringify(detail), 'error');
-        var msg = detail.message || detail.originalError || JSON.stringify(detail);
-        setStatus('✗ ' + msg, 'err');
-        document.getElementById('lo-load-btn').disabled = false;
-      });
-
-      // lo.iframe.error fires before lo.application.error — may have more detail
-      loApp.addEventListener('lo.iframe.error', function(e) {
-        log('❌ lo.iframe.error: ' + JSON.stringify(e.detail || {}), 'error');
-      });
-
-      // CSP violations on THIS page's context.
-      // IMPORTANT: frame-ancestors violations fire on Salesforce's context (not here)
-      // so they won't appear in this panel — they appear as raw browser console errors.
-      // Open DevTools → Console and look for "Framing '...' violates frame-ancestors".
-      var cspHandler = function(e) {
-        log('🚫 CSP violation on this page: blocked=' + e.blockedURI +
-            ' directive=' + e.effectiveDirective, 'warn');
-      };
-      document.addEventListener('securitypolicyviolation', cspHandler);
-      setTimeout(function() {
-        document.removeEventListener('securitypolicyviolation', cspHandler);
-      }, 30000);
-
-      // LO 2.0 requires the component to be a CHILD of <lightning-out-application>,
-      // not a sibling, so the framework can associate it with the iframe session.
-      loApp.appendChild(el);
-      container.appendChild(loApp);
-      log('Elements appended — <' + component + '> nested inside <lightning-out-application>');
-      setStatus('Waiting for ready…', 'loading');
-
-    } catch (err) {
-      log('❌ ' + err.message, 'error');
-      setStatus('✗ ' + err.message, 'err');
-      document.getElementById('lo-load-btn').disabled = false;
     }
-  }
 
-  // ══════════════════════════════════════════════════════════════════════════
-  // LO 1.0 — Aura, $Lightning.use()
-  // ══════════════════════════════════════════════════════════════════════════
-  function loadLO1() {
-    var domain  = document.getElementById('lo-domain').value.trim().replace(/\/$/, '');
-    var auraApp = document.getElementById('lo1-auraapp').value.trim();
-    var token   = document.getElementById('lo-token').value.trim();
+    function currentMode() {
+        return document.getElementById('btn-v2').classList.contains('active') ? 'v2' : 'v1';
+    }
 
-    if (!domain || !auraApp || !token) { setStatus('Fill in all fields', 'err'); return; }
+    // ── Status helper ──────────────────────────────────────────────────────────
+    function setStatus(msg, cls) {
+        var el = document.getElementById('lo-status');
+        el.textContent = msg;
+        el.className = cls || '';
+    }
 
-    document.getElementById('lo-load-btn').disabled = true;
-    log('── Starting LO 1.0 ──────────────────');
-    log('domain: ' + domain);
-    log('auraApp: ' + auraApp);
-    setStatus('Loading Aura runtime…', 'loading');
+    // ── Entry point ────────────────────────────────────────────────────────────
+    function loadLO() {
+        if (currentMode() === 'v2') {
+            loadLO2();
+        } else {
+            loadLO1();
+        }
+    }
 
-    var container = document.getElementById('lo-container');
-    container.innerHTML = '';
+    // ══════════════════════════════════════════════════════════════════════════
+    // LO 2.0 — LWC, iframe-based, uses singleaccess → frontdoor URL
+    // ══════════════════════════════════════════════════════════════════════════
+    async function loadLO2() {
+        var domain    = document.getElementById('lo-domain').value.trim().replace(/\/$/, '');
+        var appId     = document.getElementById('lo2-appid').value.trim();
+        var component = (document.getElementById('lo2-component').value.trim() || 'c-mads-chat-drawer').toLowerCase();
+        var token     = document.getElementById('lo-token').value.trim();
 
-    function init() {
-      if (!window.$Lightning) {
-        log('❌ $Lightning not available after script load', 'error');
-        setStatus('✗ $Lightning not found', 'err');
-        document.getElementById('lo-load-btn').disabled = false;
-        return;
-      }
-      log('Calling $Lightning.use(' + auraApp + ')…');
-      setStatus('Calling $Lightning.use()…', 'loading');
+        if (!domain || !appId || !token) {
+            setStatus('Fill in all fields', 'err');
+            return;
+        }
 
-      window.$Lightning.use(
-        auraApp,
-        function() {
-          log('✅ $Lightning.use callback fired', 'ok');
-          setStatus('Creating component…', 'loading');
-          window.$Lightning.createComponent(
-            'c:wrapperMADSLightningOutShell',
-            {},
-            container,
-            function(cmp, status) {
-              log('createComponent callback — status: ' + status + ' cmpExists: ' + !!cmp,
-                  status === 'SUCCESS' ? 'ok' : 'error');
-              if (status === 'SUCCESS') {
-                setStatus('✓ Loaded (LO 1.0)', 'ok');
-              } else {
-                setStatus('✗ createComponent: ' + status, 'err');
-              }
-              document.getElementById('lo-load-btn').disabled = false;
+        document.getElementById('lo-load-btn').disabled = true;
+        setStatus('Getting frontdoor URL…', 'loading');
+
+        try {
+            // Exchange access token → one-time frontdoor URL (60 s TTL).
+            // Requires Salesforce Setup → CORS to include this page's origin.
+            var fdRes = await fetch(domain + '/services/oauth2/singleaccess', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: new URLSearchParams({ access_token: token }).toString()
+            });
+
+            if (!fdRes.ok) {
+                var errText = await fdRes.text();
+                throw new Error('singleaccess ' + fdRes.status + ': ' + errText.slice(0, 200));
             }
-          );
-        },
-        domain,
-        token,
-        function() { log('LO 1.0 readyCallback fired'); }
-      );
+
+            var fdData = await fdRes.json();
+            var frontdoorUrl = fdData.frontdoor_url;
+            if (!frontdoorUrl) throw new Error('No frontdoor_url in response: ' + JSON.stringify(fdData));
+            console.log('[LO2] Frontdoor URL obtained', frontdoorUrl.slice(0, 80) + '…');
+
+            // Inject LO 2.0 bootstrap script once per page load.
+            if (!_lo2ScriptInjected) {
+                _lo2ScriptInjected = true;
+                var s = document.createElement('script');
+                s.src = domain + '/lightning/lightning.out.latest/index.iife.prod.js';
+                s.type = 'text/javascript';
+                s.async = true;
+                document.head.appendChild(s);
+                console.log('[LO2] Script injected', s.src);
+            }
+
+            // Mount: <lightning-out-application> and <c-mads-chat-drawer> as siblings.
+            // is-lightning-out   → @api isLightningOut     (skips NavigationMixin)
+            // disable-utility-sync → @api disableUtilitySync (skips platformUtilityBarApi)
+            var container = document.getElementById('lo-container');
+            container.innerHTML = '';
+
+            var loApp = document.createElement('lightning-out-application');
+            loApp.setAttribute('frontdoor-url', frontdoorUrl);
+            loApp.setAttribute('app-id', appId);
+            loApp.setAttribute('components', component);
+
+            var drawer = document.createElement(component);
+            drawer.setAttribute('is-lightning-out', 'true');
+            drawer.setAttribute('disable-utility-sync', 'true');
+
+            loApp.addEventListener('lo.application.ready', function () {
+                console.log('[LO2] ✅ Application ready');
+                setStatus('✓ Chat drawer loaded (LO 2.0)', 'ok');
+                document.getElementById('lo-load-btn').disabled = false;
+            });
+
+            loApp.addEventListener('lo.application.error', function (e) {
+                var msg = e.detail ? (e.detail.message || JSON.stringify(e.detail)) : 'unknown';
+                console.error('[LO2] ❌ Application error', e.detail);
+                setStatus('✗ ' + msg, 'err');
+                document.getElementById('lo-load-btn').disabled = false;
+            });
+
+            container.appendChild(loApp);
+            container.appendChild(drawer);
+            setStatus('Mounting…', 'loading');
+
+        } catch (err) {
+            console.error('[LO2] Failed', err);
+            setStatus('✗ ' + err.message, 'err');
+            document.getElementById('lo-load-btn').disabled = false;
+        }
     }
 
-    if (_lo1ScriptInjected) {
-      init();
-    } else {
-      _lo1ScriptInjected = true;
-      var s = document.createElement('script');
-      s.src = domain + '/lightning/lightning.out.js';
-      s.async = true;
-      s.addEventListener('load', function() {
-        log('✅ lightning.out.js loaded', 'ok');
-        init();
-      });
-      s.addEventListener('error', function() {
-        log('❌ Failed to load lightning.out.js from ' + domain, 'error');
-        setStatus('✗ Failed to load lightning.out.js', 'err');
-        document.getElementById('lo-load-btn').disabled = false;
-      });
-      document.head.appendChild(s);
-      log('Injecting ' + s.src + '…');
+    // ══════════════════════════════════════════════════════════════════════════
+    // LO 1.0 — Aura, uses $Lightning.use() + $Lightning.createComponent()
+    // ══════════════════════════════════════════════════════════════════════════
+    function loadLO1() {
+        var domain   = document.getElementById('lo-domain').value.trim().replace(/\/$/, '');
+        var auraApp  = document.getElementById('lo1-auraapp').value.trim();
+        var token    = document.getElementById('lo-token').value.trim();
+
+        if (!domain || !auraApp || !token) {
+            setStatus('Fill in all fields', 'err');
+            return;
+        }
+
+        document.getElementById('lo-load-btn').disabled = true;
+        setStatus('Loading Aura runtime…', 'loading');
+
+        var scriptSrc   = domain + '/lightning/lightning.out.js';
+        var endpointUrl = domain;
+
+        var container = document.getElementById('lo-container');
+        container.innerHTML = '';
+
+        function init() {
+            if (!window.$Lightning) {
+                setStatus('✗ $Lightning not found after script load', 'err');
+                document.getElementById('lo-load-btn').disabled = false;
+                return;
+            }
+
+            console.log('[LO1] Calling $Lightning.use()', { app: auraApp, endpointUrl: endpointUrl });
+            setStatus('Calling $Lightning.use()…', 'loading');
+
+            window.$Lightning.use(
+                auraApp,
+                function () {
+                    console.log('[LO1] ✅ $Lightning.use callback — creating component');
+                    setStatus('Creating component…', 'loading');
+
+                    window.$Lightning.createComponent(
+                        'c:wrapperMADSLightningOutShell',
+                        {},
+                        container,
+                        function (cmp, status) {
+                            console.log('[LO1] createComponent callback', { status: status, cmpExists: !!cmp });
+                            if (status === 'SUCCESS') {
+                                setStatus('✓ Chat drawer loaded (LO 1.0)', 'ok');
+                            } else {
+                                setStatus('✗ createComponent status: ' + status, 'err');
+                            }
+                            document.getElementById('lo-load-btn').disabled = false;
+                        }
+                    );
+                },
+                endpointUrl,
+                token,
+                function () {
+                    console.log('[LO1] readyCallback fired');
+                }
+            );
+        }
+
+        if (_lo1ScriptInjected) {
+            init();
+        } else {
+            _lo1ScriptInjected = true;
+            var s = document.createElement('script');
+            s.src = scriptSrc;
+            s.async = true;
+            s.addEventListener('load', init);
+            s.addEventListener('error', function () {
+                setStatus('✗ Failed to load lightning.out.js', 'err');
+                document.getElementById('lo-load-btn').disabled = false;
+            });
+            document.head.appendChild(s);
+            console.log('[LO1] Script injected', scriptSrc);
+        }
     }
-  }
 </script>
 
 </body>
